@@ -97,6 +97,7 @@ hf download Qwen/Qwen2.5-Coder-1.5B-Instruct
 We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. This can be installed with
 
 ```
+pip install torch
 pip install -U mlx-lm
 ```
 
