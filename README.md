@@ -1,19 +1,3 @@
----
-license: apache-2.0
-base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
-tags:
-- zero-knowledge
-- zk-proofs
-- circom
-- security
-- circuit-constraints
-- fine-tuned
-- lora
-language:
-- en
-pipeline_tag: text-generation
----
-
 # ZK Constraint Auditor v0.0
 
 A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits.
@@ -102,6 +86,20 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 - **v0.1** — 40–50 examples, real findings from public audits, broader pattern coverage
 - **v0.2** — 100+ examples, held-out evaluation set, honest benchmark results
 
+## Prerequisites
+
+The initial model we use is [Qwen2.5-Coder-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct). A smaller (1.5B parameters) model is selected so the progression of our fine-tuned model will be more apparent when additional training data is added. This model can be downloaded from HuggingFace using their CLI tools.
+
+```
+hf download Qwen/Qwen2.5-Coder-1.5B-Instruct
+```
+
+We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. This can be installed with
+
+```
+pip install -U mlx-lm
+```
+
 ## Training
 
 To test the training phase, we can run only ten iterations.
@@ -111,10 +109,29 @@ Once this is successful, we can remove the override so the config drives the ite
 mlx_lm.lora --config config_v00.yaml --train --iters 10
 ```
 
-We can upload updates to our Hugging Face repository with the following:
+Fuse the adapter weights to the base model:
 
-`hf upload mourningdove/zk-auditor .`
+```
+mlx_lm.fuse \
+  --model Qwen/Qwen2.5-Coder-1.5B-Instruct \
+  --adapter-path adapters/v00/ \
+  --save-path fused/
+```
 
+Verify the model works (for lower versions, the answer will likely be erroneous due to the small amount of training data used):
+
+```
+mlx_lm.generate \
+  --model fused/ \
+  --prompt "Audit this Circom circuit for vulnerabilities: template Test() { signal input a; signal output b; b <-- a * 2; }"
+```
+
+
+We can upload to our Hugging Face repository with the following:
+
+```
+hf upload mourningdove/zk-auditor fused/ --repo-type model
+```
 
 
 ## License
