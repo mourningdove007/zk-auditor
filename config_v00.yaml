@@ -1,0 +1,13 @@
+model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+train: true
+data: ../zk-constraint-data/
+seed: 42
+lora_layers: 8
+batch_size: 2
+iters: 200
+val_batches: 10
+learning_rate: 2e-5
+steps_per_report: 10
+steps_per_eval: 50
+save_every: 100
+adapter_path: ./adapters/v00/
