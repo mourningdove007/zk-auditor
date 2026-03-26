@@ -2,11 +2,7 @@
 
 A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits.
 
-## Model description
 
-This model is trained to answer one focused question: given a Circom circuit, is the constraint system sufficient to uniquely determine the values that matter? It identifies patterns where a malicious prover has degrees of freedom to substitute values that satisfy the circuit without representing a valid computation.
-
-This is a v0.0 proof of concept. The model demonstrates the fine-tuning pipeline and constraint insufficiency reasoning on simple synthetic examples. It is not production-ready and will generalize poorly outside the patterns seen in training.
 
 ## Intended use
 
@@ -45,33 +41,43 @@ Unconstrained intermediate | intermediate value computed but never tied to outpu
 
 ## Training data
 
-Fine-tuned on the [mourningdove/zk-constraint-data](https://huggingface.co/datasets/mourningdove/zk-constraint-data) dataset. These are synthetic, paired circuit examples covering 5 constraint insufficiency patterns. The full dataset is available in the [mourningdove007/zk-constraint-data repository](https://github.com/mourningdove007/zk-constraint-data) GitHub repository.
+Fine-tuned on the data found in the [mourningdove007/zk-constraint-data](https://github.com/mourningdove007/zk-constraint-data) GitHub repository.
 
-## Usage
+
+## Usage (Currently Only Mac OS)
+
+
+We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. This can be installed with
+
+```
+pip install -U mlx-lm
+```
+
+The model can be loaded from our HuggingFace repository and used to generate a response for a user supplied prompt.
 
 ```python
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import mlx.core as mx
+from mlx_lm import load, generate
 
-tokenizer = AutoTokenizer.from_pretrained("mourningdove/zk-auditor")
-model = AutoModelForCausalLM.from_pretrained("mourningdove/zk-auditor")
+model, tokenizer = load("mourningdove/zk-auditor")
 
-prompt = """You are a ZK proof security auditor specializing in Circom.
+messages = [
+    {"role": "system", "content": "You are a ZK proof security auditor specializing in Circom."},
+    {"role": "user", "content": "Audit this circuit for vulnerabilities: template Test() { signal input c; signal output b; b <-- c * 2; }"}
+]
+prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-Audit this circuit for vulnerabilities:
 
-```circom
-template Example() {
-    signal input a;
-    signal input b;
-    signal output c;
+response_text = ""
 
-    c <-- a * b;
-}
-```"""
-
-inputs = tokenizer(prompt, return_tensors="pt")
-outputs = model.generate(**inputs, max_new_tokens=300)
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+response = generate(
+    model, 
+    tokenizer, 
+    prompt=prompt, 
+    max_tokens=300,
+    sampler=lambda x: mx.argmax(x, axis=-1)
+)
+print(response)
 ```
 
 ## Limitations
@@ -86,22 +92,15 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 - **v0.1** — 40–50 examples, real findings from public audits, broader pattern coverage
 - **v0.2** — 100+ examples, held-out evaluation set, honest benchmark results
 
-## Prerequisites
+
+
+## Training
 
 The initial model we use is [Qwen2.5-Coder-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct). A smaller (1.5B parameters) model is selected so the progression of our fine-tuned model will be more apparent when additional training data is added. This model can be downloaded from HuggingFace using their CLI tools.
 
 ```
 hf download Qwen/Qwen2.5-Coder-1.5B-Instruct
 ```
-
-We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. This can be installed with
-
-```
-pip install torch
-pip install -U mlx-lm
-```
-
-## Training
 
 We can train the model to obtain the adapter weights.
 
@@ -130,7 +129,7 @@ mlx_lm.generate \
 We can upload to our Hugging Face repository with the following:
 
 ```
-hf upload mourningdove/zk-auditor adapters/v00 --repo-type model
+hf upload mourningdove/zk-auditor fused --repo-type model
 ```
 
 
