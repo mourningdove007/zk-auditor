@@ -103,8 +103,7 @@ pip install -U mlx-lm
 
 ## Training
 
-To test the training phase, we can run only ten iterations.
-Once this is successful, we can remove the override so the config drives the iteration count.
+We can train the model to obtain the adapter weights.
 
 ```
 mlx_lm.lora --config config_v00.yaml --train --iters 10
@@ -131,7 +130,7 @@ mlx_lm.generate \
 We can upload to our Hugging Face repository with the following:
 
 ```
-hf upload mourningdove/zk-auditor fused/ --repo-type model
+hf upload mourningdove/zk-auditor adapters/v00 --repo-type model
 ```
 
 
