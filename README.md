@@ -1,7 +1,6 @@
 # ZK Constraint Auditor v0.0
 
-A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits.
-
+A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits. Fine-tuned on data from the [mourningdove007/zk-constraint-data](https://github.com/mourningdove007/zk-constraint-data) GitHub repository. About 15 training examples and about 3 validation examples are far from sufficient to train a quality model. A model fine-tuned on so little data will likely behave sensibly only on very simple circuits. This version is a proof of concept.
 
 
 ## Intended use
@@ -9,22 +8,6 @@ A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying ins
 - First-pass triage of Circom circuits during security audits
 - Educational tool for learning constraint insufficiency patterns
 - Research baseline for ZK security tooling
-
-## Vulnerability patterns
-
-| Pattern | Description |
-|---------|-------------|
-Hint without recomposition | `<--` with no binding `===` |
-Boolean check only | `x * (x-1) === 0` but `x` is never tied to the source |
-Underdetermined system | 1 equation, 2 unknowns |
-Weak final check | `a * b === 0` instead of `a === 0` |
-Missing range constraint | bits decomposed but never bounded |
-Unconstrained output | output assigned with `<--` not `<==` |
-Partial constraint | only some iterations constrained in a loop |
-Missing input validation | signal used before being constrained |
-Reused signal across contexts | same signal constrained differently in two places |
-Unconstrained intermediate | intermediate value computed but never tied to output |
-
 
 ## Training details
 
@@ -39,21 +22,16 @@ Unconstrained intermediate | intermediate value computed but never tied to outpu
 | Learning rate | 2e-5 |
 | Framework | Circom |
 
-## Training data
 
-Fine-tuned on the data found in the [mourningdove007/zk-constraint-data](https://github.com/mourningdove007/zk-constraint-data) GitHub repository.
+## Usage (macOS)
 
-
-## Usage (Currently Only Mac OS)
-
-
-We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. This can be installed with
+We use [MLX](https://github.com/ml-explore/mlx-lm) for fine-tuning an existing model. Install it with:
 
 ```
 pip install -U mlx-lm
 ```
 
-The model can be loaded from our HuggingFace repository and used to generate a response for a user supplied prompt.
+The model can be loaded from our Hugging Face repository and used to generate a response for a user-supplied prompt.
 
 ```python
 import mlx.core as mx
@@ -63,12 +41,10 @@ model, tokenizer = load("mourningdove/zk-auditor")
 
 messages = [
     {"role": "system", "content": "You are a ZK proof security auditor specializing in Circom."},
-    {"role": "user", "content": "Audit this circuit for vulnerabilities: template Test() { signal input c; signal output b; b <-- c * 2; }"}
+    {"role": "user", "content": "Audit this circuit for vulnerabilities: template Test() { signal input a; signal output b; b <-- a * 3; }"}
 ]
 prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-
-response_text = ""
 
 response = generate(
     model, 
@@ -80,23 +56,27 @@ response = generate(
 print(response)
 ```
 
-## Limitations
+## Usage (Transformers)
 
-- Trained on 15 simple synthetic examples — will not generalize to complex real-world circuits
-- Circom only — does not cover Halo2, Arkworks, gnark, or Cairo
-- May miss novel constraint patterns not seen in training
-- Never use model output as the sole basis for a security finding — always verify manually
+Coming soon. The plan is to provide a working Transformers example in the next version.
 
-## Roadmap
+## A Note on `apply_chat_template`
 
-- **v0.1** — 40–50 examples, real findings from public audits, broader pattern coverage
-- **v0.2** — 100+ examples, held-out evaluation set, honest benchmark results
+This model was fine-tuned using Qwen's ChatML format, so you must apply the correct chat template when running inference in Python. Without it, the model receives a prompt structure that it was never trained on and will produce incorrect output.
 
+`apply_chat_template` formats your messages into the ChatML structure the model expects. If your `tokenizer_config.json` is missing the `chat_template` key, inference can fail silently. Use the following to verify that your chat template matches the base model's template:
 
+```python
+from transformers import AutoTokenizer
+
+ref = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-1.5B-Instruct")
+tokenizer = AutoTokenizer.from_pretrained("mourningdove/zk-auditor")
+print(ref.chat_template == tokenizer.chat_template)
+```
 
 ## Training
 
-The initial model we use is [Qwen2.5-Coder-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct). A smaller (1.5B parameters) model is selected so the progression of our fine-tuned model will be more apparent when additional training data is added. This model can be downloaded from HuggingFace using their CLI tools.
+The initial model we use is [Qwen2.5-Coder-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct). A smaller model (1.5B parameters) is selected so the progression of our fine-tuned model will be more apparent when additional training data is added. This model can be downloaded from Hugging Face using their CLI tools.
 
 ```
 hf download Qwen/Qwen2.5-Coder-1.5B-Instruct
@@ -117,7 +97,7 @@ mlx_lm.fuse \
   --save-path fused/
 ```
 
-Verify the model works (for lower versions, the answer will likely be erroneous due to the small amount of training data used):
+Verify the model works:
 
 ```
 mlx_lm.generate \
@@ -125,12 +105,16 @@ mlx_lm.generate \
   --prompt "Audit this Circom circuit for vulnerabilities: template Test() { signal input a; signal output b; b <-- a * 2; }"
 ```
 
-
 We can upload to our Hugging Face repository with the following:
 
 ```
 hf upload mourningdove/zk-auditor fused --repo-type model
 ```
+
+## Roadmap
+
+- **v0.1** — 40–50 examples, real findings from public audits, broader pattern coverage
+- **v0.2** — 100+ examples, held-out evaluation set, honest benchmark results
 
 
 ## License
