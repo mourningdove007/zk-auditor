@@ -1,6 +1,6 @@
 # ZK Constraint Auditor v0.1
 
-A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits. Fine-tuned on data from the [mourningdove007/zk-constraint-data](https://github.com/mourningdove007/zk-constraint-data) GitHub repository. Versions prior to `v1.0` will likely miss potential issues as the training data is still small. 
+A LoRA fine-tune of `Qwen2.5-Coder-1.5B-Instruct` specialized in identifying insufficient constraints in ZK proof circuits. Fine-tuned on data from the [mourningdove007/zk-constraint-data](https://github.com/mourningdove007/zk-constraint-data) GitHub repository. The fine-tuned model is available on [HuggingFace](https://huggingface.co/mourningdove/zk-auditor). Versions prior to `v1.0` will likely miss simple issues as the training data is still small. 
 
 
 ## Intended use
